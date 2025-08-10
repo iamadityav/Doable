@@ -1,5 +1,3 @@
-// Based on the data architecture from your blueprint
-
 export interface SubTask {
   id: string;
   title: string;
@@ -9,7 +7,7 @@ export interface SubTask {
 export enum Period {
   Morning = 'morning',
   Evening = 'evening',
-  Miscellaneous = 'miscellaneous', // Added new period
+  Miscellaneous = 'miscellaneous',
   Anytime = 'anytime',
 }
 
@@ -30,9 +28,9 @@ export interface Task {
   completed: boolean;
   createdAt: Date;
   scheduledDate?: Date;
+  scheduledTime?: string; // New field for time
   deadline?: Date;
   completedAt?: Date;
   tags: string[];
   subtasks: SubTask[];
-  // repeatPattern?: RepeatPattern; // To be added later
 }

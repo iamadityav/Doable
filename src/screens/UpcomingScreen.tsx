@@ -9,20 +9,22 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import HapticFeedback from 'react-native-haptic-feedback';
-import { format, isTomorrow, isToday, addDays } from 'date-fns';
+import { format, addDays, isEqual, startOfDay } from 'date-fns';
 import { useTasks } from '../hooks/useTask';
 import { useAreas } from '../hooks/useArea';
 import { Task, Priority } from '../modals';
 import { NewTaskModal } from '../components/NewTaskModal';
+import { Header } from '../components/Header';
 
 // --- Theming ---
 const COLORS = {
   primary: '#007AFF',
-  background: '#F2F2F7',
+  background: '#FFFFFF', // Changed to white
   card: '#FFFFFF',
   success: '#34C759',
   text: '#000000',
   textSecondary: '#8E8E93',
+  border: '#E5E5EA', // Grey border color
   priorityHigh: '#FF3B30',
   priorityMedium: '#FF9500',
   priorityLow: '#34C759',
@@ -58,9 +60,9 @@ const TaskItem: React.FC<{ task: Task; onToggle: (id: string) => void }> = ({ ta
     <TouchableOpacity style={styles.taskItem} onPress={() => onToggle(id)}>
       <View style={[styles.priorityIndicator, { backgroundColor: getPriorityColor() }]} />
       <View style={styles.taskContent}>
-        <TouchableOpacity style={[styles.checkbox, completed && styles.checkboxCompleted]} onPress={() => onToggle(id)}>
+        <View style={[styles.checkbox, completed && styles.checkboxCompleted]}>
           {completed && <SimpleIcon name="check" size={14} color={COLORS.card} />}
-        </TouchableOpacity>
+        </View>
         <View style={styles.taskInfo}>
           <Text style={[styles.taskTitle, completed && styles.completedText]}>{title}</Text>
           <View style={styles.taskMeta}>
@@ -79,42 +81,31 @@ const FloatingActionButton: React.FC<{ onPress: () => void }> = ({ onPress }) =>
   </TouchableOpacity>
 );
 
+// --- New Date Selector Component ---
+const DateChip: React.FC<{ date: Date; isSelected: boolean; onSelect: () => void }> = ({ date, isSelected, onSelect }) => (
+    <TouchableOpacity style={[styles.dateChip, isSelected && styles.dateChipSelected]} onPress={onSelect}>
+        <Text style={[styles.dateChipDay, isSelected && styles.dateChipTextSelected]}>{format(date, 'E')}</Text>
+        <Text style={[styles.dateChipDate, isSelected && styles.dateChipTextSelected]}>{format(date, 'd')}</Text>
+    </TouchableOpacity>
+);
+
+
 // --- Main UpcomingScreen Component ---
 
 const UpcomingScreen: React.FC = () => {
-  const { tasks, toggleTask, addTask } = useTasks();
+  const { tasks, addTask, toggleTask } = useTasks();
   const { areas } = useAreas();
   const [isModalVisible, setModalVisible] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date());
 
-  const upcomingTasks = useMemo(() => {
-    return tasks
-      .filter(task => task.scheduledDate && !isToday(new Date(task.scheduledDate)))
-      .sort((a, b) => new Date(a.scheduledDate!).getTime() - new Date(b.scheduledDate!).getTime());
-  }, [tasks]);
+  const dateRange = useMemo(() => Array.from({ length: 30 }, (_, i) => addDays(new Date(), i)), []);
 
-  const groupedTasks = useMemo(() => {
-    const groups: { [key: string]: Task[] } = {};
-    upcomingTasks.forEach(task => {
-      const dateKey = format(new Date(task.scheduledDate!), 'yyyy-MM-dd');
-      if (!groups[dateKey]) {
-        groups[dateKey] = [];
-      }
-      groups[dateKey].push(task);
-    });
-    return Object.entries(groups).map(([date, tasks]) => ({
-      title: date,
-      data: tasks,
-    }));
-  }, [upcomingTasks]);
-
-  const getSectionTitle = (dateString: string) => {
-    const date = new Date(dateString);
-    const adjustedDate = addDays(date, 1);
-    if (isTomorrow(adjustedDate)) {
-      return 'Tomorrow';
-    }
-    return format(adjustedDate, 'EEEE, MMMM d');
-  };
+  const filteredTasks = useMemo(() => {
+    return tasks.filter(task => 
+        task.scheduledDate && 
+        isEqual(startOfDay(new Date(task.scheduledDate)), startOfDay(selectedDate))
+    );
+  }, [tasks, selectedDate]);
 
   const handleFabPress = () => {
     HapticFeedback.trigger('impactMedium');
@@ -127,29 +118,37 @@ const UpcomingScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <Text style={styles.headerIcon}>⏰</Text>
-        <Text style={styles.headerTitle}>Upcoming</Text>
+      <Header title="Upcoming" />
+
+      <View style={styles.dateSelectorContainer}>
+        <Text style={styles.monthTitle}>{format(selectedDate, 'MMMM yyyy')}</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dateSelectorContent}>
+            {dateRange.map(date => (
+                <DateChip 
+                    key={date.toISOString()} 
+                    date={date} 
+                    isSelected={isEqual(startOfDay(date), startOfDay(selectedDate))}
+                    onSelect={() => setSelectedDate(date)}
+                />
+            ))}
+        </ScrollView>
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {groupedTasks.length > 0 ? (
-          groupedTasks.map(group => (
-            <View key={group.title} style={styles.daySection}>
-              <Text style={styles.dayTitle}>{getSectionTitle(group.title)}</Text>
-              <View style={styles.tasksContainer}>
-                {group.data.map(task => (
-                  <TaskItem key={task.id} task={task} onToggle={toggleTask} />
-                ))}
-              </View>
-            </View>
-          ))
-        ) : (
-          <View style={styles.emptyStateContainer}>
-            <Text style={styles.emptyStateText}>No upcoming tasks.</Text>
-            <Text style={styles.emptyStateSubtext}>Add a new task with a future date.</Text>
-          </View>
-        )}
+        <View style={styles.daySection}>
+            <Text style={styles.dayTitle}>{format(selectedDate, 'MMMM d, EEEE')}</Text>
+            {filteredTasks.length > 0 ? (
+                <View style={styles.tasksContainer}>
+                    {filteredTasks.map(task => (
+                    <TaskItem key={task.id} task={task} onToggle={toggleTask} />
+                    ))}
+                </View>
+            ) : (
+                <View style={styles.emptyStateContainer}>
+                    <Text style={styles.emptyStateText}>No tasks for this day.</Text>
+                </View>
+            )}
+        </View>
         <View style={{ height: 100 }} />
       </ScrollView>
 
@@ -168,28 +167,75 @@ const UpcomingScreen: React.FC = () => {
 // --- Styles ---
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  header: { backgroundColor: COLORS.card, paddingHorizontal: SPACING.s, paddingTop: SPACING.s, paddingBottom: SPACING.m, flexDirection: 'row', alignItems: 'center' },
-  headerIcon: { fontSize: 28, marginRight: 8 },
-  headerTitle: { fontSize: 28, fontWeight: 'bold', color: COLORS.text },
+  dateSelectorContainer: {
+    backgroundColor: COLORS.card,
+    paddingVertical: SPACING.s,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  monthTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+    paddingHorizontal: SPACING.s,
+    marginBottom: SPACING.s,
+  },
+  dateSelectorContent: {
+    paddingHorizontal: SPACING.s,
+    gap: 12,
+  },
+  dateChip: {
+    backgroundColor: COLORS.background,
+    borderRadius: 12,
+    padding: 10,
+    alignItems: 'center',
+    minWidth: 50,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  dateChipSelected: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  dateChipDay: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    fontWeight: '500',
+  },
+  dateChipDate: {
+    fontSize: 18,
+    color: COLORS.text,
+    fontWeight: 'bold',
+    marginTop: 4,
+  },
+  dateChipTextSelected: {
+    color: COLORS.card,
+  },
   scrollView: { flex: 1 },
   daySection: { marginTop: SPACING.m },
   dayTitle: { fontSize: 20, fontWeight: '600', color: COLORS.text, marginBottom: SPACING.s, paddingHorizontal: SPACING.s },
-  tasksContainer: { gap: 1 },
-  taskItem: { backgroundColor: COLORS.card, marginHorizontal: SPACING.s, borderRadius: 10, flexDirection: 'row', overflow: 'hidden' },
+  tasksContainer: { gap: SPACING.s, paddingHorizontal: SPACING.s },
+  taskItem: { 
+    backgroundColor: COLORS.card, 
+    borderRadius: 10, 
+    flexDirection: 'row', 
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+   },
   priorityIndicator: { width: 5 },
-  taskContent: { flexDirection: 'row', alignItems: 'flex-start', padding: SPACING.s, flex: 1 },
-  checkbox: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: '#C7C7CC', marginRight: SPACING.s, marginTop: 2, alignItems: 'center', justifyContent: 'center' },
+  taskContent: { flexDirection: 'row', alignItems: 'center', padding: SPACING.s, flex: 1 },
+  checkbox: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: '#C7C7CC', marginRight: SPACING.s, alignItems: 'center', justifyContent: 'center' },
   checkboxCompleted: { backgroundColor: COLORS.success, borderColor: COLORS.success },
   taskInfo: { flex: 1 },
-  taskTitle: { fontSize: 16, color: COLORS.text, lineHeight: 20, marginBottom: 4 },
+  taskTitle: { fontSize: 16, color: COLORS.text, lineHeight: 20 },
   completedText: { textDecorationLine: 'line-through', color: COLORS.textSecondary },
-  taskMeta: { flexDirection: 'row', alignItems: 'center' },
+  taskMeta: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
   taskCategory: { fontSize: 12, color: COLORS.textSecondary, marginLeft: 4 },
-  fab: { position: 'absolute', bottom: 24, right: 20, width: 56, height: 56, borderRadius: 28, elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, y: 2 }, shadowOpacity: 0.25, shadowRadius: 8 },
+  fab: { position: 'absolute', bottom: 24, right: 20, width: 56, height: 56, borderRadius: 28, elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, y: 2 }, shadowOpacity: 0.1, shadowRadius: 8 },
   fabGradient: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
-  emptyStateContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 100 },
-  emptyStateText: { fontSize: 18, fontWeight: '600', color: COLORS.textSecondary },
-  emptyStateSubtext: { fontSize: 14, color: '#C7C7CC', marginTop: 8 },
+  emptyStateContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: SPACING.l },
+  emptyStateText: { fontSize: 16, fontWeight: '500', color: COLORS.textSecondary },
 });
 
 export default UpcomingScreen;

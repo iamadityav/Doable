@@ -5,24 +5,27 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
+  Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import HapticFeedback from 'react-native-haptic-feedback';
 import { useTasks } from '../hooks/useTask';
 import { useStreak } from '../hooks/useStreak';
-import { useAreas } from '../hooks/useArea'; // Corrected path
-import { Task, Priority, Period } from '../modals'; // Corrected path
+import { useAreas } from '../hooks/useArea';
+import { Task, Priority, Period } from '../modals';
 import { NewTaskModal } from '../components/NewTaskModal';
+import { Header } from '../components/Header';
 
 // --- Theming ---
 const COLORS = {
   primary: '#007AFF',
-  background: '#F2F2F7',
+  background: '#FFFFFF', // White background
   card: '#FFFFFF',
   success: '#34C759',
   text: '#000000',
   textSecondary: '#8E8E93',
+  border: '#E5E5EA', // Grey border
   priorityHigh: '#FF3B30',
   priorityMedium: '#FF9500',
   priorityLow: '#34C759',
@@ -58,9 +61,15 @@ const TaskItem: React.FC<{ task: Task; onToggle: (id: string) => void; }> = ({ t
     <TouchableOpacity style={styles.taskItem} onPress={() => onToggle(id)}>
       <View style={[styles.priorityIndicator, { backgroundColor: getPriorityColor() }]} />
       <View style={styles.taskContent}>
-        <View style={[styles.checkbox, completed && styles.checkboxCompleted]}>
+        <Pressable 
+          style={[styles.checkbox, completed && styles.checkboxCompleted]} 
+          onPress={(e) => {
+            e.stopPropagation();
+            onToggle(id);
+          }}
+        >
           {completed && <SimpleIcon name="check" size={14} color={COLORS.card} />}
-        </View>
+        </Pressable>
         <View style={styles.taskInfo}>
           <Text style={[styles.taskTitle, completed && styles.completedText]}>{title}</Text>
           <View style={styles.taskMeta}>
@@ -121,15 +130,16 @@ const TodayScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <Text style={styles.headerIcon}>📋</Text>
-          <Text style={styles.headerTitle}>Today</Text>
-          <StreakWidget streak={streak.currentStreak} />
+      <Header title="Doable" />
+      
+      {/* <View style={styles.summaryContainer}>
+        <View style={styles.summaryHeader}>
+            <Text style={styles.summaryTitle}>Today's Progress</Text>
+            <StreakWidget streak={streak.currentStreak} />
         </View>
         <ProgressBar progress={currentProgress} />
         <Text style={styles.progressSubtext}>{completedCount} of {totalTasks} tasks completed</Text>
-      </View>
+      </View> */}
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.daySection}>
@@ -162,32 +172,52 @@ const TodayScreen: React.FC = () => {
 // --- Styles ---
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  header: { backgroundColor: COLORS.card, paddingHorizontal: SPACING.s, paddingTop: SPACING.s, paddingBottom: SPACING.m },
-  headerTop: { flexDirection: 'row', alignItems: 'center', marginBottom: SPACING.s },
-  headerIcon: { fontSize: 28, marginRight: 8 },
-  headerTitle: { fontSize: 28, fontWeight: 'bold', color: COLORS.text, flex: 1 },
-  streakWidget: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.background, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16 },
+  summaryContainer: { 
+    backgroundColor: COLORS.card, 
+    paddingHorizontal: SPACING.s, 
+    paddingVertical: SPACING.s,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  summaryHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: SPACING.s,
+  },
+  summaryTitle: {
+      fontSize: 22,
+      fontWeight: 'bold',
+  },
+  streakWidget: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F2F2F7', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16 },
   streakText: { fontSize: 14, fontWeight: '600', color: COLORS.success, marginLeft: 4 },
   progressContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
-  progressTrack: { flex: 1, height: 6, backgroundColor: COLORS.background, borderRadius: 3, overflow: 'hidden' },
+  progressTrack: { flex: 1, height: 6, backgroundColor: '#F2F2F7', borderRadius: 3, overflow: 'hidden' },
   progressFill: { height: '100%', backgroundColor: COLORS.success, borderRadius: 3 },
   progressText: { fontSize: 14, fontWeight: '600', color: COLORS.text, marginLeft: 12, minWidth: 40 },
   progressSubtext: { fontSize: 12, color: COLORS.textSecondary, marginTop: 2 },
   scrollView: { flex: 1 },
   daySection: { marginTop: SPACING.m },
   dayTitle: { fontSize: 20, fontWeight: '600', color: COLORS.text, marginBottom: SPACING.s, paddingHorizontal: SPACING.s },
-  tasksContainer: { gap: 1 },
-  taskItem: { backgroundColor: COLORS.card, marginHorizontal: SPACING.s, borderRadius: 10, flexDirection: 'row', overflow: 'hidden' },
+  tasksContainer: { gap: SPACING.s, paddingHorizontal: SPACING.s },
+  taskItem: { 
+    backgroundColor: COLORS.card, 
+    borderRadius: 10, 
+    flexDirection: 'row', 
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
   priorityIndicator: { width: 5 },
-  taskContent: { flexDirection: 'row', alignItems: 'flex-start', padding: SPACING.s, flex: 1 },
-  checkbox: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: '#C7C7CC', marginRight: SPACING.s, marginTop: 2, alignItems: 'center', justifyContent: 'center' },
+  taskContent: { flexDirection: 'row', alignItems: 'center', padding: SPACING.s, flex: 1 },
+  checkbox: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: '#C7C7CC', marginRight: SPACING.s, alignItems: 'center', justifyContent: 'center' },
   checkboxCompleted: { backgroundColor: COLORS.success, borderColor: COLORS.success },
   taskInfo: { flex: 1 },
-  taskTitle: { fontSize: 16, color: COLORS.text, lineHeight: 20, marginBottom: 4 },
+  taskTitle: { fontSize: 16, color: COLORS.text, lineHeight: 20 },
   completedText: { textDecorationLine: 'line-through', color: COLORS.textSecondary },
-  taskMeta: { flexDirection: 'row', alignItems: 'center' },
+  taskMeta: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
   taskCategory: { fontSize: 12, color: COLORS.textSecondary, marginLeft: 4 },
-  fab: { position: 'absolute', bottom: 24, right: 20, width: 56, height: 56, borderRadius: 28, elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, y: 2 }, shadowOpacity: 0.25, shadowRadius: 8 },
+  fab: { position: 'absolute', bottom: 24, right: 20, width: 56, height: 56, borderRadius: 28, elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, y: 2 }, shadowOpacity: 0.1, shadowRadius: 8 },
   fabGradient: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
 });
 

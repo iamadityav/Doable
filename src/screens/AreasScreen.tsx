@@ -13,15 +13,17 @@ import { useAreas } from '../hooks/useArea';
 import { useTasks } from '../hooks/useTask';
 import { Area, Project as ProjectModel, Task } from '../modals';
 import { NewTaskModal } from '../components/NewTaskModal';
+import { Header } from '../components/Header';
 
 // --- Theming ---
 const COLORS = {
   primary: '#007AFF',
-  background: '#F2F2F7',
+  background: '#FFFFFF', // Changed to white
   card: '#FFFFFF',
   text: '#000000',
   textSecondary: '#8E8E93',
-  border: '#E5E5EA',
+  border: '#E5E5EA', // Grey border color
+  success: '#34C759',
 };
 
 const SPACING = {
@@ -33,7 +35,7 @@ const SPACING = {
 
 const SimpleIcon: React.FC<{ name: string; size: number; color?: string }> = ({ name, size, color = COLORS.text }) => {
   const getEmoji = (iconName: string) => ({
-    'work': '💼', 'personal': '👤', 'health': '❤️', 'family': '🏡', 'add': '+',
+    'work': '💼', 'personal': '👤', 'health': '❤️', 'family': '🏡', 'add': '+', 'check': '✓',
   }[iconName] || '📊');
   return <Text style={{ fontSize: size, color, textAlign: 'center' }}>{getEmoji(name)}</Text>;
 };
@@ -78,9 +80,20 @@ const ProjectRow: React.FC<{ project: ProjectWithProgress; color: string }> = ({
   );
 };
 
+const TaskRow: React.FC<{ task: Task }> = ({ task }) => (
+    <View style={styles.taskRow}>
+        <View style={[styles.checkbox, task.completed && styles.checkboxCompleted]}>
+          {task.completed && <SimpleIcon name="check" size={14} color={COLORS.card} />}
+        </View>
+        <Text style={[styles.taskTitle, task.completed && styles.completedText]}>{task.title}</Text>
+    </View>
+);
+
+
 interface AreaWithProgress extends Area {
     totalTasks: number;
     projects: ProjectWithProgress[];
+    singleTasks: Task[];
 }
 
 const AreaCard: React.FC<{ area: AreaWithProgress; onAddTask: () => void; }> = ({ area, onAddTask }) => (
@@ -99,8 +112,11 @@ const AreaCard: React.FC<{ area: AreaWithProgress; onAddTask: () => void; }> = (
         {area.projects.map(project => (
           <ProjectRow key={project.id} project={project} color={area.color} />
         ))}
-        {area.projects.length === 0 && (
-            <Text style={styles.noProjectsText}>No projects yet.</Text>
+        {area.singleTasks.map(task => (
+            <TaskRow key={task.id} task={task} />
+        ))}
+        {area.projects.length === 0 && area.singleTasks.length === 0 && (
+            <Text style={styles.noProjectsText}>No tasks or projects yet.</Text>
         )}
       </View>
     </View>
@@ -118,6 +134,7 @@ const AreasScreen: React.FC = () => {
   const areasWithProgress = useMemo<AreaWithProgress[]>(() => {
     return areas.map(area => {
       const tasksInArea = tasks.filter(task => task.areaId === area.id);
+      const singleTasks = tasksInArea.filter(task => !task.projectId);
       const projectsWithProgress = area.projects.map(project => {
         const tasksInProject = tasksInArea.filter(task => task.projectId === project.id);
         const completedTasks = tasksInProject.filter(task => task.completed).length;
@@ -131,6 +148,7 @@ const AreasScreen: React.FC = () => {
         ...area,
         totalTasks: tasksInArea.length,
         projects: projectsWithProgress,
+        singleTasks: singleTasks,
       };
     });
   }, [areas, tasks]);
@@ -141,10 +159,7 @@ const AreasScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <Text style={styles.headerIcon}>📊</Text>
-        <Text style={styles.headerTitle}>Areas</Text>
-      </View>
+      <Header title="Areas" />
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.gridContainer}>
@@ -173,12 +188,16 @@ const AreasScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  header: { backgroundColor: COLORS.card, paddingHorizontal: SPACING.s, paddingTop: SPACING.s, paddingBottom: SPACING.m, flexDirection: 'row', alignItems: 'center' },
-  headerIcon: { fontSize: 28, marginRight: 8 },
-  headerTitle: { fontSize: 28, fontWeight: 'bold', color: COLORS.text },
   scrollView: { flex: 1 },
   gridContainer: { padding: SPACING.s, gap: SPACING.s },
-  areaCard: { backgroundColor: COLORS.card, borderRadius: 12, flexDirection: 'row', overflow: 'hidden', borderWidth: 1, borderColor: COLORS.border },
+  areaCard: { 
+    backgroundColor: COLORS.card, 
+    borderRadius: 12, 
+    flexDirection: 'row', 
+    overflow: 'hidden', 
+    borderWidth: 1, 
+    borderColor: COLORS.border 
+  },
   colorBar: { width: 6 },
   cardContent: { flex: 1, padding: SPACING.s },
   cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: SPACING.s },
@@ -191,9 +210,14 @@ const styles = StyleSheet.create({
   projectInfo: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   projectTitle: { fontSize: 15, color: COLORS.text },
   projectTaskCount: { fontSize: 13, color: COLORS.textSecondary },
+  taskRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
+  taskTitle: { fontSize: 15, color: COLORS.text },
+  completedText: { textDecorationLine: 'line-through', color: COLORS.textSecondary },
+  checkbox: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: '#C7C7CC', marginRight: SPACING.s, alignItems: 'center', justifyContent: 'center' },
+  checkboxCompleted: { backgroundColor: COLORS.success, borderColor: COLORS.success },
   progressTrack: { height: 6, backgroundColor: COLORS.background, borderRadius: 3, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 3 },
-  fab: { position: 'absolute', bottom: 24, right: 20, width: 56, height: 56, borderRadius: 28, elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, y: 2 }, shadowOpacity: 0.25, shadowRadius: 8 },
+  fab: { position: 'absolute', bottom: 24, right: 20, width: 56, height: 56, borderRadius: 28, elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, y: 2 }, shadowOpacity: 0.1, shadowRadius: 8 },
   fabGradient: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
 });
 

@@ -13,6 +13,9 @@ import TodayScreen from './src/screens/TodayScreen';
 import UpcomingScreen from './src/screens/UpcomingScreen';
 import AreasScreen from './src/screens/AreasScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
+import { Image } from 'react-native';
+import LogbookScreen from './src/screens/LogbookScreen';
+import StreakTrackerScreen from './src/screens/StreakTracker';
 
 // --- Helper Components ---
 
@@ -67,6 +70,10 @@ const tabs = [
 function App(): React.JSX.Element {
   const [activeTab, setActiveTab] = useState('today');
 
+    const navigateTo = (tabId: string) => {
+    setActiveTab(tabId);
+  };
+
   const renderScreen = () => {
     switch (activeTab) {
       case 'today':
@@ -78,7 +85,13 @@ function App(): React.JSX.Element {
         return <AreasScreen />;
       case 'settings':
         // This screen will contain links to Logbook, Mood, etc.
-        return < SettingsScreen />;
+        return <SettingsScreen navigateTo={navigateTo} />;
+      case 'logbook':
+        // This screen will contain links to Logbook, Mood, etc.
+        return < LogbookScreen />;
+      case 'Streaks':
+        // This screen will contain links to Logbook, Mood, etc.
+        return < StreakTrackerScreen />;
       default:
         return <TodayScreen />;
     }
@@ -124,6 +137,54 @@ function App(): React.JSX.Element {
         </View>
       </View>
     </SafeAreaProvider>
+
+    //     <SafeAreaProvider>
+    //   <StatusBar
+    //     barStyle="dark-content"
+    //     backgroundColor={COLORS.background}
+    //   />
+    //   <View style={styles.container}>
+    //     {/* Main Content */}
+    //     <View style={styles.content}>
+    //       {renderScreen()}
+    //     </View>
+
+    //     {/* Custom Tab Bar */}
+    //     <View style={styles.tabBar}>
+    //       {tabs.map((tab) => (
+    //         <TouchableOpacity
+    //           key={tab.id}
+    //           style={styles.tabItem}
+    //           onPress={() => setActiveTab(tab.id)}
+    //         >
+    //           {/* Use the new icon for the 'Today' tab */}
+    //           {tab.id === 'today' ? (
+    //             <Image
+    //               source={require('./src/assets/icon.png')}
+    //               style={[
+    //                 styles.icon,
+    //                 { tintColor: activeTab === tab.id ? COLORS.primary : COLORS.textSecondary },
+    //               ]}
+    //             />
+    //           ) : (
+    //             // Fallback to text for other icons for now
+    //             <Text style={{color: activeTab === tab.id ? COLORS.primary : COLORS.textSecondary}}>{tab.icon.charAt(0).toUpperCase()}</Text>
+    //           )}
+    //           <Text
+    //             style={[
+    //               styles.tabLabel,
+    //               {
+    //                 color: activeTab === tab.id ? COLORS.primary : COLORS.textSecondary,
+    //               },
+    //             ]}
+    //           >
+    //             {tab.name}
+    //           </Text>
+    //         </TouchableOpacity>
+    //       ))}
+    //     </View>
+    //   </View>
+    // </SafeAreaProvider>
   );
 }
 
@@ -169,6 +230,11 @@ const styles = StyleSheet.create({
   placeholderSubtext: {
     fontSize: 17,
     color: COLORS.textSecondary,
+  },
+    icon: {
+    width: 28,
+    height: 28,
+    marginBottom: 2,
   },
 });
 
