@@ -8,52 +8,190 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useStreak } from '../hooks/useStreak';
 import { useTasks } from '../hooks/useTask';
+import { Header } from '../components/Header';
 
-// --- Theming ---
+// --- Ultra Clean Minimal Theme ---
 const COLORS = {
-  primary: '#007AFF',
-  background: '#F2F2F7',
-  card: '#FFFFFF',
-  success: '#34C759',
-  warning: '#FF9500',
-  text: '#000000',
-  textSecondary: '#8E8E93',
-  border: '#E5E5EA',
+  // Background
+  background: '#FFFFFF',
+  cardDefault: '#FBFBFB',
+  cardSecondary: '#F9FAFB',
+  
+  // Text hierarchy
+  textPrimary: '#1A1A1A',
+  textSecondary: '#6B7280',
+  textTertiary: '#9CA3AF',
+  
+  // Accent colors
+  primary: '#4F46E5',
+  success: '#059669',
+  warning: '#EA580C',
+  streak: '#F59E0B',
+  
+  // Subtle borders and dividers
+  border: '#F3F4F6',
+  borderActive: '#E5E7EB',
+  
+  // Gradients and highlights
+  streakGlow: '#FEF3C7',
+  primaryGlow: '#EEF2FF',
+  successGlow: '#ECFDF5',
+  
+  // Shadows
+  shadowLight: 'rgba(0, 0, 0, 0.04)',
+  shadowMedium: 'rgba(0, 0, 0, 0.08)',
 };
 
 const SPACING = {
-  s: 16,
-  m: 24,
-  l: 32,
+  xs: 6,
+  s: 10,
+  m: 16,
+  l: 20,
+  xl: 24,
+  xxl: 32,
+};
+
+const TYPOGRAPHY = {
+  hero: {
+    fontSize: 28,
+    fontWeight: '800',
+    letterSpacing: -0.8,
+    lineHeight: 34,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: -0.4,
+    lineHeight: 24,
+  },
+  subtitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    letterSpacing: -0.2,
+    lineHeight: 22,
+  },
+  body: {
+    fontSize: 15,
+    fontWeight: '500',
+    letterSpacing: -0.1,
+    lineHeight: 20,
+  },
+  caption: {
+    fontSize: 12,
+    fontWeight: '500',
+    letterSpacing: 0.1,
+  },
+  micro: {
+    fontSize: 11,
+    fontWeight: '500',
+    letterSpacing: 0.2,
+    textTransform: 'uppercase' as const,
+  },
+  streakNumber: {
+    fontSize: 56,
+    fontWeight: '800',
+    letterSpacing: -2,
+    lineHeight: 56,
+  },
+  statNumber: {
+    fontSize: 24,
+    fontWeight: '700',
+    letterSpacing: -0.6,
+    lineHeight: 28,
+  },
 };
 
 // --- Reusable Components ---
-const SimpleIcon: React.FC<{ name: string; size: number; color?: string }> = ({ name, size, color = COLORS.text }) => {
+const CleanIcon: React.FC<{ name: string; size: number; color?: string }> = ({ name, size, color = COLORS.textPrimary }) => {
   const getEmoji = (iconName: string) => ({
-    'fire': '🔥', 'trophy': '🏆', 'check': '✅',
+    'fire': '🔥', 
+    'trophy': '🏆', 
+    'check': '✅',
+    'target': '🎯',
+    'calendar': '📅',
   }[iconName] || '•');
-  return <Text style={{ fontSize: size, color, textAlign: 'center' }}>{getEmoji(name)}</Text>;
+  
+  return <Text style={{ fontSize: size, color, lineHeight: size + 2 }}>{getEmoji(name)}</Text>;
 };
 
 // --- Screen-Specific Components ---
-const StatCard: React.FC<{ icon: string; value: string | number; label: string; color: string }> = ({ icon, value, label, color }) => (
-    <View style={styles.statCard}>
-        <SimpleIcon name={icon} size={24} color={color} />
-        <Text style={styles.statValue}>{value}</Text>
-        <Text style={styles.statLabel}>{label}</Text>
+const StreakHero: React.FC<{ streak: number }> = ({ streak }) => (
+  <View style={styles.heroContainer}>
+    <View style={styles.streakCircle}>
+      <View style={styles.streakGlow}>
+        <CleanIcon name="fire" size={32} color={COLORS.streak} />
+        <Text style={styles.streakNumber}>{streak}</Text>
+        <Text style={styles.streakLabel}>Day Streak</Text>
+      </View>
     </View>
+    <View style={styles.heroTextContainer}>
+      <Text style={styles.heroTitle}>Keep the momentum!</Text>
+      <Text style={styles.heroSubtitle}>You're building great habits</Text>
+    </View>
+  </View>
 );
 
-const CircularProgress: React.FC<{ streak: number }> = ({ streak }) => {
-    // Basic circular view for now. A library like react-native-svg could make this a proper progress circle.
-    return (
-        <View style={styles.progressCircle}>
-            <SimpleIcon name="fire" size={40} color={COLORS.warning} />
-            <Text style={styles.progressText}>{streak}</Text>
-            <Text style={styles.progressLabel}>Day Streak</Text>
-        </View>
-    );
-};
+const StatCard: React.FC<{ 
+  icon: string; 
+  value: string | number; 
+  label: string; 
+  color: string;
+  accent: string;
+}> = ({ icon, value, label, color, accent }) => (
+  <View style={styles.statCard}>
+    <View style={[styles.statIconContainer, { backgroundColor: accent }]}>
+      <CleanIcon name={icon} size={20} color={color} />
+    </View>
+    <Text style={styles.statValue}>{value}</Text>
+    <Text style={styles.statLabel}>{label}</Text>
+  </View>
+);
+
+const InspirationCard: React.FC = () => (
+  <View style={styles.inspirationCard}>
+    <View style={styles.inspirationContent}>
+      <Text style={styles.inspirationText}>
+        "The secret of getting ahead is getting started."
+      </Text>
+      <Text style={styles.inspirationAuthor}>— Mark Twain</Text>
+    </View>
+  </View>
+);
+
+const ProgressMetrics: React.FC<{ 
+  currentStreak: number; 
+  longestStreak: number; 
+  tasksCompleted: number; 
+}> = ({ currentStreak, longestStreak, tasksCompleted }) => (
+  <View style={styles.metricsContainer}>
+    <Text style={styles.sectionTitle}>Your Progress</Text>
+    <View style={styles.metricsGrid}>
+      <StatCard 
+        icon="calendar" 
+        value={currentStreak} 
+        label="Current Streak" 
+        color={COLORS.streak}
+        accent={COLORS.streakGlow}
+      />
+      <StatCard 
+        icon="trophy" 
+        value={longestStreak} 
+        label="Best Streak" 
+        color={COLORS.primary}
+        accent={COLORS.primaryGlow}
+      />
+    </View>
+    <View style={styles.singleMetricContainer}>
+      <StatCard 
+        icon="target" 
+        value={tasksCompleted} 
+        label="Total Tasks Completed" 
+        color={COLORS.success}
+        accent={COLORS.successGlow}
+      />
+    </View>
+  </View>
+);
 
 // --- Main Screen Component ---
 const StreakTrackerScreen: React.FC = () => {
@@ -64,129 +202,172 @@ const StreakTrackerScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <Text style={styles.headerIcon}>🔥</Text>
-        <Text style={styles.headerTitle}>Streak Tracker</Text>
-      </View>
-      <ScrollView contentContainerStyle={styles.scrollViewContent}>
-        <Text style={styles.mainTitle}>Keep the Fire Going!</Text>
+      <Header title="Streak Tracker" />
+      
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <StreakHero streak={streak.currentStreak} />
         
-        <CircularProgress streak={streak.currentStreak} />
-
-        <View style={styles.statsContainer}>
-            <StatCard icon="trophy" value={streak.longestStreak} label="Longest Streak" color={COLORS.primary} />
-            <StatCard icon="check" value={totalTasksCompleted} label="Tasks Completed" color={COLORS.success} />
-        </View>
-
-        {/* A motivational quote or tip could go here */}
-        <View style={styles.quoteCard}>
-            <Text style={styles.quoteText}>"The secret of getting ahead is getting started."</Text>
-            <Text style={styles.quoteAuthor}>- Mark Twain</Text>
-        </View>
+        <ProgressMetrics 
+          currentStreak={streak.currentStreak}
+          longestStreak={streak.longestStreak}
+          tasksCompleted={totalTasksCompleted}
+        />
+        
+        <InspirationCard />
+        
+        <View style={{ height: 60 }} />
       </ScrollView>
     </SafeAreaView>
   );
 };
 
+// --- Clean Minimal Styles ---
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  header: {
-    backgroundColor: COLORS.card,
-    paddingHorizontal: SPACING.s,
-    paddingTop: SPACING.s,
-    paddingBottom: SPACING.m,
-    flexDirection: 'row',
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: SPACING.xl,
+  },
+  
+  // Hero Section
+  heroContainer: {
     alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    marginBottom: SPACING.xxl,
   },
-  headerIcon: {
-    fontSize: 28,
-    marginRight: 8,
+  streakCircle: {
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: COLORS.cardDefault,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SPACING.l,
+    shadowColor: COLORS.shadowLight,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: COLORS.text,
+  streakGlow: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  scrollViewContent: {
-      alignItems: 'center',
-      padding: SPACING.m,
+  streakNumber: {
+    ...TYPOGRAPHY.streakNumber,
+    color: COLORS.textPrimary,
+    marginVertical: SPACING.xs,
   },
-  mainTitle: {
-      fontSize: 22,
-      fontWeight: '600',
-      color: COLORS.textSecondary,
-      marginBottom: SPACING.l,
+  streakLabel: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.textSecondary,
   },
-  progressCircle: {
-      width: 200,
-      height: 200,
-      borderRadius: 100,
-      backgroundColor: COLORS.card,
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginBottom: SPACING.l,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.1,
-      shadowRadius: 10,
-      elevation: 5,
+  heroTextContainer: {
+    alignItems: 'center',
   },
-  progressText: {
-      fontSize: 64,
-      fontWeight: 'bold',
-      color: COLORS.text,
+  heroTitle: {
+    ...TYPOGRAPHY.hero,
+    color: COLORS.textPrimary,
+    textAlign: 'center',
+    marginBottom: SPACING.xs,
   },
-  progressLabel: {
-      fontSize: 16,
-      color: COLORS.textSecondary,
-      marginTop: -8,
+  heroSubtitle: {
+    ...TYPOGRAPHY.body,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
   },
-  statsContainer: {
-      flexDirection: 'row',
-      justifyContent: 'space-around',
-      width: '100%',
-      marginBottom: SPACING.l,
+  
+  // Metrics Section
+  metricsContainer: {
+    marginBottom: SPACING.xxl,
   },
+  sectionTitle: {
+    ...TYPOGRAPHY.title,
+    color: COLORS.textPrimary,
+    marginBottom: SPACING.m,
+  },
+  metricsGrid: {
+    flexDirection: 'row',
+    gap: SPACING.s,
+    marginBottom: SPACING.s,
+  },
+  singleMetricContainer: {
+    alignItems: 'center',
+  },
+  
+  // Stat Card
   statCard: {
-      backgroundColor: COLORS.card,
-      borderRadius: 12,
-      padding: SPACING.s,
-      alignItems: 'center',
-      width: '45%',
+    backgroundColor: COLORS.cardDefault,
+    borderRadius: 12,
+    padding: SPACING.m,
+    alignItems: 'center',
+    flex: 1,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    shadowColor: COLORS.shadowLight,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 1,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  statIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SPACING.s,
   },
   statValue: {
-      fontSize: 24,
-      fontWeight: 'bold',
-      color: COLORS.text,
-      marginVertical: 4,
+    ...TYPOGRAPHY.statNumber,
+    color: COLORS.textPrimary,
+    marginBottom: SPACING.xs,
   },
   statLabel: {
-      fontSize: 14,
-      color: COLORS.textSecondary,
+    ...TYPOGRAPHY.caption,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
   },
-  quoteCard: {
-      backgroundColor: COLORS.card,
-      borderRadius: 12,
-      padding: SPACING.m,
-      width: '100%',
-      alignItems: 'center',
+  
+  // Inspiration Card
+  inspirationCard: {
+    backgroundColor: COLORS.cardDefault,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    shadowColor: COLORS.shadowLight,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 1,
+    shadowRadius: 2,
+    elevation: 1,
   },
-  quoteText: {
-      fontSize: 16,
-      fontStyle: 'italic',
-      color: COLORS.text,
-      textAlign: 'center',
+  inspirationContent: {
+    padding: SPACING.xl,
+    alignItems: 'center',
   },
-  quoteAuthor: {
-      fontSize: 14,
-      color: COLORS.textSecondary,
-      marginTop: 8,
-  }
+  inspirationText: {
+    ...TYPOGRAPHY.subtitle,
+    color: COLORS.textPrimary,
+    textAlign: 'center',
+    fontStyle: 'italic',
+    marginBottom: SPACING.m,
+    lineHeight: 24,
+  },
+  inspirationAuthor: {
+    ...TYPOGRAPHY.body,
+    color: COLORS.textSecondary,
+    fontWeight: '500',
+  },
 });
 
 export default StreakTrackerScreen;

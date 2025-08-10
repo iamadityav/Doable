@@ -115,10 +115,10 @@ const ProRow: React.FC<{ onPress: () => void; isFirst?: boolean; isLast?: boolea
 
 // --- Main Screen Component ---
 
-const SettingsScreen: React.FC = () => {
+const SettingsScreen: React.FC = ({navigateTo}) => {
   const appVersion = '1.0.0 (Build 1)';
 
-  const navigateTo = (screen: string) => console.log(`Navigating to ${screen}`);
+  // const navigateTo = (screen: string) => console.log(`Navigating to ${screen}`);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>

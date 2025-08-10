@@ -18,7 +18,7 @@ const SPACING = {
 // --- Reusable Components ---
 const SimpleIcon: React.FC<{ name: string; size: number; color: string }> = ({ name, size, color }) => {
   const getEmoji = (iconName: string) => ({
-    'local-fire-department': '🔥',
+    'local-fire-department': '⚡️',
   }[iconName] || '•');
   return <Text style={{ fontSize: size, color, textAlign: 'center' }}>{getEmoji(name)}</Text>;
 };
@@ -59,7 +59,7 @@ export const Header: React.FC<HeaderProps> = ({ title }) => {
 // --- Styles ---
 const styles = StyleSheet.create({
   header: {
-    backgroundColor: COLORS.card,
+    // backgroundColor: COLORS.card,
     paddingHorizontal: SPACING.s,
     paddingVertical: 12,
     flexDirection: 'row',
@@ -78,14 +78,13 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
     color: COLORS.text,
   },
   streakWidget: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.background,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
