@@ -20,7 +20,7 @@ export enum Priority {
 export interface Task {
   id: string;
   title: string;
-  notes?: string;
+  notes?: string; // New field for additional info/notes
   areaId: string;
   projectId?: string;
   period: Period;
@@ -28,7 +28,7 @@ export interface Task {
   completed: boolean;
   createdAt: Date;
   scheduledDate?: Date;
-  scheduledTime?: string; // New field for time
+  scheduledTime?: string;
   deadline?: Date;
   completedAt?: Date;
   tags: string[];

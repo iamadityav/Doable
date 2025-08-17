@@ -4,51 +4,47 @@ import { Task, Period, Priority } from '../modals';
 import { TaskStorage } from '../services/storage';
 import { useStreak } from './useStreak';
 
-// --- Initial Data ---
-// This is used ONLY if no data is found in storage.
 const initialTasks: Task[] = [
-  {
-    id: 'default-m1',
-    title: 'First Task',
-    areaId: 'Personal',
-    period: Period.Morning,
-    priority: Priority.Medium,
-    completed: false,
-    createdAt: new Date(),
-    tags: [],
-    subtasks: [],
-  },
-  {
-    id: 'default-e1',
-    title: 'First Task',
-    areaId: 'Personal',
-    period: Period.Evening,
-    priority: Priority.Medium,
-    completed: false,
-    createdAt: new Date(),
-    tags: [],
-    subtasks: [],
-  },
-  {
-    id: 'default-misc1',
-    title: 'First Task',
-    areaId: 'Personal',
-    period: Period.Miscellaneous,
-    priority: Priority.Medium,
-    completed: false,
-    createdAt: new Date(),
-    tags: [],
-    subtasks: [],
-  },
+    {
+        id: 'default-m1',
+        title: 'First Task',
+        areaId: 'Personal',
+        period: Period.Morning,
+        priority: Priority.Medium,
+        completed: false,
+        createdAt: new Date(),
+        tags: [],
+        subtasks: [],
+    },
+    {
+        id: 'default-e1',
+        title: 'First Task',
+        areaId: 'Personal',
+        period: Period.Evening,
+        priority: Priority.Medium,
+        completed: false,
+        createdAt: new Date(),
+        tags: [],
+        subtasks: [],
+    },
+    {
+        id: 'default-misc1',
+        title: 'First Task',
+        areaId: 'Personal',
+        period: Period.Miscellaneous,
+        priority: Priority.Medium,
+        completed: false,
+        createdAt: new Date(),
+        tags: [],
+        subtasks: [],
+    },
 ];
 
-// --- Custom Hook ---
 export const useTasks = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const { handleTaskCompletion } = useStreak();
 
-  // Load tasks from storage on initial render
   useEffect(() => {
     const loadTasks = async () => {
       try {
@@ -57,14 +53,12 @@ export const useTasks = () => {
         
         if (storedTasks && storedTasks.length > 0) {
           finalTasks = [...storedTasks];
-          // Check if default tasks are missing and add them
           initialTasks.forEach(initialTask => {
             if (!finalTasks.some(storedTask => storedTask.id === initialTask.id)) {
               finalTasks.push(initialTask);
             }
           });
         } else {
-          // If storage is empty, use the initial default tasks
           finalTasks = initialTasks;
         }
         setTasks(finalTasks);
@@ -78,14 +72,13 @@ export const useTasks = () => {
     loadTasks();
   }, []);
 
-  // Save tasks whenever they change
   useEffect(() => {
     if (isLoaded) {
       TaskStorage.saveTasks(tasks);
     }
   }, [tasks, isLoaded]);
 
-  const addTask = async (newTaskData: Omit<Task, 'id' | 'completed' | 'createdAt' | 'subtasks' | 'tags'>) => {
+  const addTask = (newTaskData: Omit<Task, 'id' | 'completed' | 'createdAt' | 'subtasks' | 'tags'>) => {
     const newTask: Task = {
       ...newTaskData,
       id: uuid.v4() as string,
@@ -97,7 +90,17 @@ export const useTasks = () => {
     setTasks(prevTasks => [...prevTasks, newTask]);
   };
 
-  const toggleTask = async (taskId: string) => {
+  const updateTask = (updatedTask: Task) => {
+    setTasks(prevTasks =>
+      prevTasks.map(task => (task.id === updatedTask.id ? updatedTask : task))
+    );
+  };
+
+  const deleteTask = (taskId: string) => {
+    setTasks(prevTasks => prevTasks.filter(task => task.id !== taskId));
+  };
+
+  const toggleTask = (taskId: string) => {
     let wasCompleted = false;
     const updatedTasks = tasks.map(task => {
       if (task.id === taskId) {
@@ -106,22 +109,17 @@ export const useTasks = () => {
       }
       return task;
     });
-
     setTasks(updatedTasks);
-
     if (wasCompleted) {
-        handleTaskCompletion();
+      handleTaskCompletion();
     }
-  };
-  
-  const getTasksForToday = () => {
-    return tasks.filter(task => !task.scheduledDate || new Date(task.scheduledDate).toDateString() === new Date().toDateString());
   };
 
   return {
     tasks,
     addTask,
+    updateTask,
+    deleteTask,
     toggleTask,
-    getTasksForToday,
   };
 };
