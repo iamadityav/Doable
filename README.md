@@ -1,97 +1,68 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# Doable - A Minimalist, ADHD-Friendly Planner
 
-# Getting Started
+<img width="1024" height="1024" alt="icon" src="https://github.com/user-attachments/assets/081a2b5d-34f1-403f-b562-44c93ebbddf1" />
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
 
-## Step 1: Start Metro
+Welcome! This is the codebase for **Doable**, a beautifully simple and intuitive task manager designed from the ground up to be ADHD-friendly. It helps you focus on what's important without the clutter and noise of traditional productivity apps.
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+---
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+## ✨ Key Features
 
-```sh
-# Using npm
-npm start
+* **Clean & Focused Today View:** See your tasks for the day, neatly organized into "To Do" and "Done" sections for a clear sense of accomplishment.
+* **Upcoming Timeline View:** A beautiful, timeline-style view of your upcoming schedule, making it easy to visualize your day hour by hour.
+* **Focus Mode:** A minimalist Pomodoro timer with a calming, ambient animation to help you concentrate without distractions.
+* **AI-Powered Task Breakdown:** Turn large, overwhelming tasks into small, manageable subtasks with a single tap using the power of the Google Gemini API.
+* **Streak & Logbook:** Stay motivated by tracking your daily streak and reviewing your completed tasks in a clean, organized Logbook.
+* **Minimalist & Themed UI:** A consistent, clean, and light-themed UI that's easy on the eyes and simple to navigate.
 
-# OR using Yarn
-yarn start
-```
+---
 
-## Step 2: Build and run your app
+## 🛠️ Development Resources
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
+This is a **React Native** application, written in **TypeScript**. It's built on a modern stack of community-supported packages.
 
-### Android
+* **Tech Stack:** A full list of dependencies can be found in the `package.json` file.
+* **AI Integration:** The app uses the Google Gemini API for its intelligent features.
 
-```sh
-# Using npm
-npm run android
+---
 
-# OR using Yarn
-yarn android
-```
+## 🚀 Getting Started
 
-### iOS
+1.  **Clone the repository:**
+    ```bash
+    git clone [https://github.com/your-username/doable-app.git](https://github.com/your-username/doable-app.git)
+    ```
+2.  **Install dependencies:**
+    ```bash
+    cd doable-app
+    npm install
+    ```
+3.  **Add your API Key:**
+    * Open `src/services/AIService.ts`.
+    * Replace `"YOUR_API_KEY_GOES_HERE"` with your actual Google Gemini API key.
+4.  **Run on iOS:**
+    ```bash
+    npx react-native run-ios
+    ```
+5.  **Run on Android:**
+    ```bash
+    npx react-native run-android
+    ```
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
+---
 
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
+## 🤝 Contributions
 
-```sh
-bundle install
-```
+While this is a personal project, I'm open to high-quality contributions. Adhering to the below guidelines will ensure a more timely review.
 
-Then, and every time you update your native dependencies, run:
+**Guidelines:**
+* Check for existing issues before filing a new one.
+* Please open an issue to discuss any significant changes before submitting a pull request.
+* Well-written PRs that solve problems concisely are always welcome!
 
-```sh
-bundle exec pod install
-```
+---
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+## 📜 License (MIT)
 
-```sh
-# Using npm
-npm run ios
-
-# OR using Yarn
-yarn ios
-```
-
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
-
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
-
-## Step 3: Modify your app
-
-Now that you have successfully run the app, let's make changes!
-
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
-
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
-
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
-
-## Congratulations! :tada:
-
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+The code is available under the MIT license. See the `LICENSE` file for the full license.
