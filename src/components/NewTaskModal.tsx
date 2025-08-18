@@ -1,4 +1,4 @@
-import React, {useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,15 +7,17 @@ import {
   TextInput,
   ScrollView,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import Modal from 'react-native-modal';
 import { format, addDays, isEqual, startOfDay, setHours, setMinutes } from 'date-fns';
-import { Task, Period, Priority, Area } from '../modals';
+import { Task, Period, Priority, Area, SubTask } from '../modals';
+import uuid from 'react-native-uuid';
+import { AIService } from '../services/AIService';
 
-// --- Ultra Clean Minimal Theme ---
+// --- Theming & Constants ---
 const COLORS = {
   background: '#FFFFFF',
-  modalBackground: '#FAFAFA',
   inputBackground: '#F8FAFC',
   chipDefault: '#F1F5F9',
   chipSelected: '#4F46E5',
@@ -29,17 +31,15 @@ const COLORS = {
   priorityLow: '#16A34A',
   border: '#E2E8F0',
   primary: '#4F46E5',
+  success: '#059669',
   danger: '#DC2626',
-  shadowModal: 'rgba(15, 23, 42, 0.15)',
 };
 
 const SPACING = {
-  xs: 6,
   s: 10,
   m: 16,
   l: 20,
   xl: 24,
-  xxl: 32,
 };
 
 const TYPOGRAPHY = {
@@ -50,65 +50,30 @@ const TYPOGRAPHY = {
   button: { fontSize: 16, fontWeight: '600' },
   timeDisplay: { fontSize: 28, fontWeight: '800' },
   timeButton: { fontSize: 18, fontWeight: '600' },
+  subtask: { fontSize: 15, fontWeight: '500' },
 };
 
-// --- Helper to generate dates ---
-const getUpcomingDays = (count: number): Date[] => {
-  return Array.from({ length: count }, (_, i) => addDays(new Date(), i));
-};
+// --- Helper & Sub-Components ---
+const getUpcomingDays = (count: number): Date[] => Array.from({ length: count }, (_, i) => addDays(new Date(), i));
 
-// --- Enhanced Icon Component ---
 const CleanIcon: React.FC<{ name: string; size: number; color: string }> = ({ name, size, color }) => {
-  const getEmoji = (iconName: string) => ({
-    'morning': '🌅',
-    'evening': '🌙',
-    'misc': '📝',
-    'clock': '🕐',
-  }[iconName] || '📋');
-  
-  return (
-    <Text style={{ fontSize: size, color, lineHeight: size + 2 }}>
-      {getEmoji(name)}
-    </Text>
-  );
+  const getEmoji = (iconName: string) => ({ 'morning': '🌅', 'evening': '🌙', 'misc': '📝', 'clock': '🕐', 'ai': '✨' }[iconName] || '📋');
+  return <Text style={{ fontSize: size, color, lineHeight: size + 2 }}>{getEmoji(name)}</Text>;
 };
 
-// --- iOS-Style Wheel Picker Component ---
-interface WheelPickerProps {
-  data: (string | number)[];
-  selectedIndex: number;
-  onSelect: (index: number) => void;
-  height?: number;
-  itemHeight?: number;
-}
-
-const WheelPicker: React.FC<WheelPickerProps> = ({ data, selectedIndex, onSelect, height = 200, itemHeight = 40 }) => {
+const WheelPicker: React.FC<{ data: (string | number)[]; selectedIndex: number; onSelect: (index: number) => void; height?: number; itemHeight?: number }> = ({ data, selectedIndex, onSelect, height = 180, itemHeight = 36 }) => {
   const scrollViewRef = React.useRef<ScrollView>(null);
-  
-  React.useEffect(() => {
-    if (scrollViewRef.current) {
-      const offsetY = selectedIndex * itemHeight;
-      scrollViewRef.current.scrollTo({ y: offsetY, animated: false });
-    }
+  useEffect(() => {
+    scrollViewRef.current?.scrollTo({ y: selectedIndex * itemHeight, animated: false });
   }, [selectedIndex, itemHeight]);
-
   const handleScroll = (event: any) => {
-    const offsetY = event.nativeEvent.contentOffset.y;
-    const index = Math.round(offsetY / itemHeight);
+    const index = Math.round(event.nativeEvent.contentOffset.y / itemHeight);
     if (index !== selectedIndex) onSelect(index);
   };
-
   return (
     <View style={[styles.wheelContainer, { height }]}>
       <View style={[styles.selectionIndicator, { top: (height - itemHeight) / 2, height: itemHeight }]} />
-      <ScrollView
-        ref={scrollViewRef}
-        showsVerticalScrollIndicator={false}
-        snapToInterval={itemHeight}
-        decelerationRate="fast"
-        onMomentumScrollEnd={handleScroll}
-        contentContainerStyle={{ paddingTop: (height - itemHeight) / 2, paddingBottom: (height - itemHeight) / 2 }}
-      >
+      <ScrollView ref={scrollViewRef} showsVerticalScrollIndicator={false} snapToInterval={itemHeight} decelerationRate="fast" onMomentumScrollEnd={handleScroll} contentContainerStyle={{ paddingTop: (height - itemHeight) / 2, paddingBottom: (height - itemHeight) / 2 }}>
         {data.map((item, index) => (
           <TouchableOpacity key={index} style={[styles.wheelItem, { height: itemHeight }]} onPress={() => onSelect(index)}>
             <Text style={[styles.wheelItemText, selectedIndex === index && styles.wheelItemTextSelected]}>{item}</Text>
@@ -119,36 +84,24 @@ const WheelPicker: React.FC<WheelPickerProps> = ({ data, selectedIndex, onSelect
   );
 };
 
-// --- Time Picker Component ---
-interface TimePickerProps {
-  isVisible: boolean;
-  selectedTime: Date | null;
-  onTimeSelect: (time: Date) => void;
-  onClose: () => void;
-}
-
-const TimePicker: React.FC<TimePickerProps> = ({ isVisible, selectedTime, onTimeSelect, onClose }) => {
+const TimePicker: React.FC<{ isVisible: boolean; selectedTime: Date | null; onTimeSelect: (time: Date) => void; onClose: () => void }> = ({ isVisible, selectedTime, onTimeSelect, onClose }) => {
   const hours = Array.from({ length: 12 }, (_, i) => (i + 1).toString());
   const minutes = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'));
   const periods = ['AM', 'PM'];
-
   const [selectedHour, setSelectedHour] = useState(() => selectedTime ? (selectedTime.getHours() % 12 || 12) - 1 : 8);
   const [selectedMinute, setSelectedMinute] = useState(() => selectedTime ? selectedTime.getMinutes() : 0);
   const [selectedPeriod, setSelectedPeriod] = useState(() => selectedTime ? (selectedTime.getHours() < 12 ? 0 : 1) : 0);
-
   const handleConfirm = () => {
     const displayHour = parseInt(hours[selectedHour]);
     const hour24 = selectedPeriod === 0 ? (displayHour === 12 ? 0 : displayHour) : (displayHour === 12 ? 12 : displayHour + 12);
     onTimeSelect(setMinutes(setHours(new Date(), hour24), selectedMinute));
     onClose();
   };
-  
   const getCurrentTime = () => {
     const displayHour = parseInt(hours[selectedHour]);
     const hour24 = selectedPeriod === 0 ? (displayHour === 12 ? 0 : displayHour) : (displayHour === 12 ? 12 : displayHour + 12);
     return format(setMinutes(setHours(new Date(), hour24), selectedMinute), 'h:mm a');
   };
-
   return (
     <Modal isVisible={isVisible} onBackdropPress={onClose} style={styles.timePickerModal} backdropOpacity={0.3} useNativeDriver>
       <View style={styles.timePickerContent}>
@@ -157,31 +110,30 @@ const TimePicker: React.FC<TimePickerProps> = ({ isVisible, selectedTime, onTime
           <Text style={styles.currentTimeText}>{getCurrentTime()}</Text>
         </View>
         <View style={styles.wheelPickersContainer}>
-          <View style={styles.wheelPickerWrapper}>
-            <Text style={styles.wheelLabel}>Hour</Text>
-            <WheelPicker data={hours} selectedIndex={selectedHour} onSelect={setSelectedHour} height={180} itemHeight={36} />
-          </View>
-          <View style={styles.wheelPickerWrapper}>
-            <Text style={styles.wheelLabel}>Minute</Text>
-            <WheelPicker data={minutes} selectedIndex={selectedMinute} onSelect={setSelectedMinute} height={180} itemHeight={36} />
-          </View>
-          <View style={styles.wheelPickerWrapper}>
-            <Text style={styles.wheelLabel}>Period</Text>
-            <WheelPicker data={periods} selectedIndex={selectedPeriod} onSelect={setSelectedPeriod} height={180} itemHeight={36} />
-          </View>
+          <View style={styles.wheelPickerWrapper}><Text style={styles.wheelLabel}>Hour</Text><WheelPicker data={hours} selectedIndex={selectedHour} onSelect={setSelectedHour} /></View>
+          <View style={styles.wheelPickerWrapper}><Text style={styles.wheelLabel}>Minute</Text><WheelPicker data={minutes} selectedIndex={selectedMinute} onSelect={setSelectedMinute} /></View>
+          <View style={styles.wheelPickerWrapper}><Text style={styles.wheelLabel}>Period</Text><WheelPicker data={periods} selectedIndex={selectedPeriod} onSelect={setSelectedPeriod} /></View>
         </View>
         <View style={styles.timePickerActions}>
-          <TouchableOpacity style={styles.timePickerCancelButton} onPress={onClose}>
-            <Text style={styles.timePickerCancelText}>Cancel</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.timePickerConfirmButton} onPress={handleConfirm}>
-            <Text style={styles.timePickerConfirmText}>Confirm</Text>
-          </TouchableOpacity>
+          <TouchableOpacity style={styles.timePickerCancelButton} onPress={onClose}><Text style={styles.timePickerCancelText}>Cancel</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.timePickerConfirmButton} onPress={handleConfirm}><Text style={styles.timePickerConfirmText}>Confirm</Text></TouchableOpacity>
         </View>
       </View>
     </Modal>
   );
 };
+
+const SubtaskItem: React.FC<{ subtask: SubTask; onToggle: () => void; onRemove: () => void; }> = ({ subtask, onToggle, onRemove }) => (
+    <View style={styles.subtaskItem}>
+        <TouchableOpacity style={[styles.subtaskCheckbox, subtask.completed && styles.subtaskCheckboxCompleted]} onPress={onToggle}>
+            {subtask.completed && <Text style={styles.subtaskCheck}>✓</Text>}
+        </TouchableOpacity>
+        <Text style={[styles.subtaskTitle, subtask.completed && styles.subtaskTitleCompleted]}>{subtask.title}</Text>
+        <TouchableOpacity onPress={onRemove}>
+            <Text style={styles.subtaskRemove}>×</Text>
+        </TouchableOpacity>
+    </View>
+);
 
 // --- Component Props Interface ---
 interface NewTaskModalProps {
@@ -189,7 +141,7 @@ interface NewTaskModalProps {
   taskToEdit?: Task | null;
   areas: Area[];
   onClose: () => void;
-  onSave: (taskData: Omit<Task, 'id'|'createdAt'|'subtasks'|'tags'|'completed'> | Task) => void;
+  onSave: (taskData: Omit<Task, 'id'|'createdAt'|'tags'|'completed'> | Task) => void;
   onDelete?: (taskId: string) => void;
 }
 
@@ -197,12 +149,14 @@ interface NewTaskModalProps {
 export const NewTaskModal: React.FC<NewTaskModalProps> = ({ isVisible, taskToEdit, areas, onClose, onSave, onDelete }) => {
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
+  const [subtasks, setSubtasks] = useState<SubTask[]>([]);
   const [period, setPeriod] = useState<Period>(Period.Morning);
   const [priority, setPriority] = useState<Priority>(Priority.Medium);
   const [areaId, setAreaId] = useState(areas.length > 0 ? areas[0].id : 'Personal');
   const [scheduledDate, setScheduledDate] = useState<Date | undefined>(undefined);
   const [scheduledTime, setScheduledTime] = useState<Date | null>(null);
   const [showTimePicker, setShowTimePicker] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const isEditMode = !!taskToEdit;
   const upcomingDays = getUpcomingDays(7);
@@ -212,11 +166,11 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({ isVisible, taskToEdi
       if (taskToEdit) {
         setTitle(taskToEdit.title);
         setNotes(taskToEdit.notes || '');
+        setSubtasks(taskToEdit.subtasks || []);
         setPeriod(taskToEdit.period);
         setPriority(taskToEdit.priority);
         setAreaId(taskToEdit.areaId);
         setScheduledDate(taskToEdit.scheduledDate);
-        // Convert time string back to Date object for the picker
         if (taskToEdit.scheduledTime) {
             const [time, modifier] = taskToEdit.scheduledTime.split(' ');
             let [hours, minutes] = time.split(':').map(Number);
@@ -232,11 +186,27 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({ isVisible, taskToEdi
     }
   }, [taskToEdit, isVisible]);
 
+  const handleAIAssist = async () => {
+    if (!title.trim()) return;
+    setIsGenerating(true);
+    try {
+      const generatedSubtasks = await AIService.breakdownTask(title);
+      setSubtasks(prev => [...prev, ...generatedSubtasks]);
+    } catch (error: any) {
+      if (error.message === 'RATE_LIMIT_EXCEEDED') {
+        Alert.alert("AI Limit Reached", "Upgrade to Pro for unlimited access!", [{ text: "Later" }, { text: "Upgrade", onPress: () => console.log("Navigate to upgrade") }]);
+      } else {
+        Alert.alert("Error", "Could not generate subtasks.");
+      }
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const handleSave = () => {
     if (title.trim()) {
       const timeString = scheduledTime ? format(scheduledTime, 'h:mm a') : '';
-      const taskData = { title, notes, period, priority, areaId, scheduledDate, scheduledTime: timeString };
-      
+      const taskData = { title, notes, subtasks, period, priority, areaId, scheduledDate, scheduledTime: timeString };
       if (isEditMode && taskToEdit) {
         onSave({ ...taskToEdit, ...taskData });
       } else {
@@ -248,19 +218,14 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({ isVisible, taskToEdi
 
   const handleDelete = () => {
     if (onDelete && taskToEdit) {
-        Alert.alert("Delete Task", "Are you sure you want to delete this task?", [
-            { text: "Cancel", style: "cancel" },
-            { text: "Delete", style: "destructive", onPress: () => {
-                onDelete(taskToEdit.id);
-                onClose();
-            }}
-        ]);
+        Alert.alert("Delete Task", "Are you sure?", [{ text: "Cancel" }, { text: "Delete", style: "destructive", onPress: () => { onDelete(taskToEdit.id); onClose(); }}]);
     }
   };
 
   const resetForm = () => {
     setTitle('');
     setNotes('');
+    setSubtasks([]);
     setPeriod(Period.Morning);
     setPriority(Priority.Medium);
     setAreaId(areas.length > 0 ? areas[0].id : 'Personal');
@@ -270,16 +235,7 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({ isVisible, taskToEdi
 
   return (
     <>
-      <Modal
-        isVisible={isVisible}
-        onBackdropPress={() => { resetForm(); onClose(); }}
-        style={styles.modal}
-        avoidKeyboard
-        backdropOpacity={0.4}
-        animationIn="slideInUp"
-        animationOut="slideOutDown"
-        useNativeDriver
-      >
+      <Modal isVisible={isVisible} onBackdropPress={() => { resetForm(); onClose(); }} style={styles.modal} avoidKeyboard backdropOpacity={0.4} animationIn="slideInUp" animationOut="slideOutDown" useNativeDriver>
         <View style={styles.modalContent}>
           <View style={styles.modalHandle} />
           <View style={styles.header}>
@@ -289,7 +245,25 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({ isVisible, taskToEdi
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
             <View style={styles.section}>
               <TextInput style={styles.titleInput} placeholder="What do you need to do?" value={title} onChangeText={setTitle} autoFocus={!isEditMode} placeholderTextColor={COLORS.textPlaceholder} multiline />
+              {title.trim().length > 0 && (
+                <TouchableOpacity style={styles.aiButton} onPress={handleAIAssist} disabled={isGenerating}>
+                  {isGenerating ? <ActivityIndicator size="small" color={COLORS.primary} /> : (
+                    <>
+                      <CleanIcon name="ai" size={14} color={COLORS.primary} />
+                      <Text style={styles.aiButtonText}>Generate Subtasks with AI</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              )}
             </View>
+            {subtasks.length > 0 && (
+              <View style={styles.section}>
+                <Text style={styles.sectionLabel}>Subtasks</Text>
+                {subtasks.map((sub, index) => (
+                  <SubtaskItem key={sub.id} subtask={sub} onToggle={() => { const newSubs = [...subtasks]; newSubs[index].completed = !newSubs[index].completed; setSubtasks(newSubs); }} onRemove={() => setSubtasks(subtasks.filter(s => s.id !== sub.id))} />
+                ))}
+              </View>
+            )}
             <View style={styles.section}>
               <Text style={styles.sectionLabel}>Notes</Text>
               <TextInput style={styles.notesInput} placeholder="Add details..." value={notes} onChangeText={setNotes} placeholderTextColor={COLORS.textPlaceholder} multiline />
@@ -311,19 +285,11 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({ isVisible, taskToEdi
             </View>
             <View style={styles.section}>
               <Text style={styles.sectionLabel}>Period</Text>
-              <View style={styles.chipGrid}>
-                <TouchableOpacity style={[styles.periodChip, period === Period.Morning && styles.chipSelected]} onPress={() => setPeriod(Period.Morning)}><CleanIcon name="morning" size={14} color={period === Period.Morning ? COLORS.textWhite : COLORS.textSecondary} /><Text style={[styles.chipText, period === Period.Morning && styles.chipTextSelected]}>Morning</Text></TouchableOpacity>
-                <TouchableOpacity style={[styles.periodChip, period === Period.Evening && styles.chipSelected]} onPress={() => setPeriod(Period.Evening)}><CleanIcon name="evening" size={14} color={period === Period.Evening ? COLORS.textWhite : COLORS.textSecondary} /><Text style={[styles.chipText, period === Period.Evening && styles.chipTextSelected]}>Evening</Text></TouchableOpacity>
-                <TouchableOpacity style={[styles.periodChip, period === Period.Miscellaneous && styles.chipSelected]} onPress={() => setPeriod(Period.Miscellaneous)}><CleanIcon name="misc" size={14} color={period === Period.Miscellaneous ? COLORS.textWhite : COLORS.textSecondary} /><Text style={[styles.chipText, period === Period.Miscellaneous && styles.chipTextSelected]}>Anytime</Text></TouchableOpacity>
-              </View>
+              <View style={styles.chipGrid}><TouchableOpacity style={[styles.periodChip, period === Period.Morning && styles.chipSelected]} onPress={() => setPeriod(Period.Morning)}><CleanIcon name="morning" size={14} color={period === Period.Morning ? COLORS.textWhite : COLORS.textSecondary} /><Text style={[styles.chipText, period === Period.Morning && styles.chipTextSelected]}>Morning</Text></TouchableOpacity><TouchableOpacity style={[styles.periodChip, period === Period.Evening && styles.chipSelected]} onPress={() => setPeriod(Period.Evening)}><CleanIcon name="evening" size={14} color={period === Period.Evening ? COLORS.textWhite : COLORS.textSecondary} /><Text style={[styles.chipText, period === Period.Evening && styles.chipTextSelected]}>Evening</Text></TouchableOpacity><TouchableOpacity style={[styles.periodChip, period === Period.Miscellaneous && styles.chipSelected]} onPress={() => setPeriod(Period.Miscellaneous)}><CleanIcon name="misc" size={14} color={period === Period.Miscellaneous ? COLORS.textWhite : COLORS.textSecondary} /><Text style={[styles.chipText, period === Period.Miscellaneous && styles.chipTextSelected]}>Anytime</Text></TouchableOpacity></View>
             </View>
             <View style={styles.section}>
               <Text style={styles.sectionLabel}>Priority</Text>
-              <View style={styles.chipGrid}>
-                <TouchableOpacity style={[styles.priorityChip, priority === Priority.High && { backgroundColor: COLORS.priorityHigh }]} onPress={() => setPriority(Priority.High)}><Text style={[styles.chipText, priority === Priority.High && styles.chipTextSelected]}>High</Text></TouchableOpacity>
-                <TouchableOpacity style={[styles.priorityChip, priority === Priority.Medium && { backgroundColor: COLORS.priorityMedium }]} onPress={() => setPriority(Priority.Medium)}><Text style={[styles.chipText, priority === Priority.Medium && styles.chipTextSelected]}>Medium</Text></TouchableOpacity>
-                <TouchableOpacity style={[styles.priorityChip, priority === Priority.Low && { backgroundColor: COLORS.priorityLow }]} onPress={() => setPriority(Priority.Low)}><Text style={[styles.chipText, priority === Priority.Low && styles.chipTextSelected]}>Low</Text></TouchableOpacity>
-              </View>
+              <View style={styles.chipGrid}><TouchableOpacity style={[styles.priorityChip, priority === Priority.High && { backgroundColor: COLORS.priorityHigh }]} onPress={() => setPriority(Priority.High)}><Text style={[styles.chipText, priority === Priority.High && styles.chipTextSelected]}>High</Text></TouchableOpacity><TouchableOpacity style={[styles.priorityChip, priority === Priority.Medium && { backgroundColor: COLORS.priorityMedium }]} onPress={() => setPriority(Priority.Medium)}><Text style={[styles.chipText, priority === Priority.Medium && styles.chipTextSelected]}>Medium</Text></TouchableOpacity><TouchableOpacity style={[styles.priorityChip, priority === Priority.Low && { backgroundColor: COLORS.priorityLow }]} onPress={() => setPriority(Priority.Low)}><Text style={[styles.chipText, priority === Priority.Low && styles.chipTextSelected]}>Low</Text></TouchableOpacity></View>
             </View>
             <View style={styles.section}>
               <Text style={styles.sectionLabel}>Area</Text>
@@ -333,18 +299,8 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({ isVisible, taskToEdi
             </View>
           </ScrollView>
           <View style={styles.buttonContainer}>
-            {isEditMode && (
-              <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
-                <Text style={styles.deleteButtonText}>Delete</Text>
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity 
-              style={[styles.saveButton, !title.trim() && styles.saveButtonDisabled]} 
-              onPress={handleSave}
-              disabled={!title.trim()}
-            >
-              <Text style={styles.saveButtonText}>{isEditMode ? 'Save Changes' : 'Create Task'}</Text>
-            </TouchableOpacity>
+            {isEditMode && (<TouchableOpacity style={styles.deleteButton} onPress={handleDelete}><Text style={styles.deleteButtonText}>Delete</Text></TouchableOpacity>)}
+            <TouchableOpacity style={[styles.saveButton, !title.trim() && styles.saveButtonDisabled]} onPress={handleSave} disabled={!title.trim()}><Text style={styles.saveButtonText}>{isEditMode ? 'Save Changes' : 'Create Task'}</Text></TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -366,6 +322,15 @@ const styles = StyleSheet.create({
   section: { marginBottom: SPACING.xl },
   sectionLabel: { ...TYPOGRAPHY.label, color: COLORS.textTertiary, marginBottom: SPACING.s },
   titleInput: { ...TYPOGRAPHY.input, backgroundColor: COLORS.inputBackground, borderRadius: 12, padding: SPACING.m, color: COLORS.textPrimary, borderWidth: 1, borderColor: COLORS.border, minHeight: 60, textAlignVertical: 'top' },
+  aiButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SPACING.s, backgroundColor: COLORS.chipDefault, paddingVertical: SPACING.s, borderRadius: 8, marginTop: SPACING.m },
+  aiButtonText: { ...TYPOGRAPHY.chip, color: COLORS.primary },
+  subtaskItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: SPACING.s, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  subtaskCheckbox: { width: 20, height: 20, borderRadius: 10, borderWidth: 1.5, borderColor: COLORS.border, marginRight: SPACING.m },
+  subtaskCheckboxCompleted: { backgroundColor: COLORS.success, borderColor: COLORS.success },
+  subtaskCheck: { color: '#FFFFFF', fontWeight: 'bold' },
+  subtaskTitle: { ...TYPOGRAPHY.subtask, color: COLORS.textPrimary, flex: 1 },
+  subtaskTitleCompleted: { textDecorationLine: 'line-through', color: COLORS.textSecondary },
+  subtaskRemove: { color: COLORS.textTertiary, fontSize: 18 },
   notesInput: { ...TYPOGRAPHY.input, backgroundColor: COLORS.inputBackground, borderRadius: 12, padding: SPACING.m, color: COLORS.textPrimary, borderWidth: 1, borderColor: COLORS.border, minHeight: 100, textAlignVertical: 'top' },
   timePickerTrigger: { backgroundColor: COLORS.inputBackground, borderRadius: 12, padding: SPACING.m, borderWidth: 1, borderColor: COLORS.border, flexDirection: 'row', alignItems: 'center', gap: SPACING.s },
   timePickerText: { ...TYPOGRAPHY.input, flex: 1 },
